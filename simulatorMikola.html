@@ -1,0 +1,2219 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tubo de Mikola — Simulador, Tablas de Resultados y Plano Cartesiano</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+    };
+  </script>
+  <!-- Google Fonts: Playfair Display (Editorial Titles), Plus Jakarta Sans (Modern UI), JetBrains Mono (Telemetry), Great Vibes & Dancing Script (Elegant Cursive Signature) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Great+Vibes&family=JetBrains+Mono:wght@500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,600;1,700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-grid: #f2f5f3;
+      --grid-line: #e2e8e4;
+      --ink-dark: #132a23;
+      --teal-btn: #2d6258;
+      --teal-btn-hover: #224c44;
+      --ochre-btn: #9e6b30;
+      --ochre-btn-hover: #835725;
+      --lcd-bg: #0c1712;
+      --lcd-glow: #5ce68b;
+    }
+
+    html.dark {
+      --bg-grid: #070d0b;
+      --grid-line: #11211b;
+      --ink-dark: #ecfdf5;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-grid);
+      background-image:
+        linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+      background-size: 28px 28px;
+      color: #1f2937;
+      letter-spacing: -0.01em;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      transition: background-color 0.35s ease, color 0.35s ease;
+    }
+
+    html.dark body {
+      color: #e2e8f0;
+    }
+
+    .font-serif-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      letter-spacing: -0.015em;
+    }
+
+    .font-mono-lcd {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .font-cursive-signature {
+      font-family: 'Great Vibes', 'Dancing Script', cursive;
+      font-weight: 400;
+      letter-spacing: 0.03em;
+      line-height: 1.25;
+    }
+
+    /* Custom Range Slider */
+    input[type="range"].mikola-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 8px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      border: 1px solid #d1d5db;
+      outline: none;
+      transition: background 0.3s;
+    }
+
+    html.dark input[type="range"].mikola-slider {
+      background: #1e293b;
+      border-color: #334155;
+    }
+
+    input[type="range"].mikola-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #d97706;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(217, 119, 6, 0.5);
+      cursor: pointer;
+      transition: transform 0.15s ease, background-color 0.15s ease;
+    }
+
+    input[type="range"].mikola-slider::-webkit-slider-thumb:hover {
+      transform: scale(1.15);
+      background: #f59e0b;
+    }
+
+    input[type="range"].mikola-slider::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #d97706;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 10px rgba(217, 119, 6, 0.5);
+      cursor: pointer;
+    }
+
+    /* Modern Glass & Futuristic Table Styling */
+    .modern-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      width: 100%;
+    }
+
+    /* Futuristic HUD Frame Accents */
+    .hud-frame {
+      position: relative;
+    }
+    .hud-frame::before,
+    .hud-frame::after {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+      z-index: 10;
+    }
+    .hud-frame::before {
+      top: -1px;
+      left: -1px;
+      border-top: 2px solid #10b981;
+      border-left: 2px solid #10b981;
+      border-top-left-radius: 12px;
+    }
+    .hud-frame::after {
+      bottom: -1px;
+      right: -1px;
+      border-bottom: 2px solid #06b6d4;
+      border-right: 2px solid #06b6d4;
+      border-bottom-right-radius: 12px;
+    }
+
+    /* Smooth animations */
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.45); }
+      50% { box-shadow: 0 0 18px 4px rgba(6, 182, 212, 0.25); }
+    }
+    .pulse-btn {
+      animation: pulseGlow 2.4s infinite;
+    }
+
+    /* Elegant Dynamic Color-Changing Signature */
+    @keyframes dynamicGradientFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes subtleBorderGlow {
+      0%, 100% {
+        border-color: rgba(16, 185, 129, 0.45);
+        box-shadow: 0 8px 30px -6px rgba(16, 185, 129, 0.22);
+      }
+      33% {
+        border-color: rgba(6, 182, 212, 0.45);
+        box-shadow: 0 8px 30px -6px rgba(6, 182, 212, 0.22);
+      }
+      66% {
+        border-color: rgba(245, 158, 11, 0.45);
+        box-shadow: 0 8px 30px -6px rgba(245, 158, 11, 0.22);
+      }
+    }
+
+    .dynamic-author-text {
+      background: linear-gradient(
+        270deg,
+        #10b981,
+        #06b6d4,
+        #6366f1,
+        #ec4899,
+        #f59e0b,
+        #10b981
+      );
+      background-size: 300% 300%;
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      animation: dynamicGradientFlow 6s ease infinite;
+      display: inline-block;
+      padding: 0.08em 0.22em;
+    }
+
+    .dynamic-author-card {
+      animation: subtleBorderGlow 8s ease-in-out infinite;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #e9ece6;
+    }
+    html.dark ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #94a3b8;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen py-8 px-4 sm:px-6 lg:px-10">
+
+  <!-- Main Container -->
+  <div class="max-w-6xl mx-auto space-y-8">
+
+    <!-- HEADER SECTION (REDISEÑADO Y MODERNIZADO) -->
+    <header class="relative overflow-hidden rounded-3xl bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl border border-emerald-500/25 dark:border-emerald-500/20 shadow-[0_12px_40px_-12px_rgba(16,185,129,0.15)] p-6 sm:p-8 transition-all duration-300">
+      <!-- Ambient Decorative Glows -->
+      <div class="pointer-events-none absolute -top-24 -left-24 w-72 h-72 rounded-full bg-emerald-400/15 dark:bg-emerald-500/10 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-24 right-1/4 w-72 h-72 rounded-full bg-cyan-400/10 dark:bg-cyan-500/10 blur-3xl"></div>
+      <!-- Top Accent Gradient Line -->
+      <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-amber-500"></div>
+
+      <div class="relative flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+        <!-- Left Hero Content -->
+        <div class="max-w-2xl space-y-3.5">
+          <!-- Top Badges Row -->
+          <div class="flex flex-wrap items-center gap-2.5">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-gradient-to-r from-emerald-500/15 to-teal-500/15 dark:from-emerald-500/20 dark:to-teal-500/10 border border-emerald-500/30 text-emerald-800 dark:text-emerald-300 text-xs font-bold tracking-wider uppercase shadow-sm">
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Laboratorio Virtual de Física • MRU
+            </div>
+
+            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 dark:bg-amber-500/15 border border-amber-500/25 text-amber-800 dark:text-amber-300 text-xs font-semibold">
+              <svg class="w-3.5 h-3.5 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+              Cinemática Interactiva
+            </span>
+          </div>
+
+          <!-- Main Title with Emblem -->
+          <div class="flex items-center gap-3.5">
+            <div class="hidden sm:flex shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 dark:from-emerald-500 dark:to-cyan-600 text-white items-center justify-center shadow-lg shadow-emerald-600/20">
+              <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+              </svg>
+            </div>
+            <h1 class="font-serif-title text-4xl sm:text-5xl font-bold bg-gradient-to-r from-[#0f2922] via-[#1d4d3f] to-[#0f766e] dark:from-white dark:via-emerald-200 dark:to-cyan-300 bg-clip-text text-transparent tracking-tight">
+              Tubo de Mikola
+            </h1>
+          </div>
+
+          <!-- Description Paragraph -->
+          <p class="text-[#4a5a52] dark:text-slate-300 text-sm sm:text-base leading-relaxed pl-0 sm:pl-3.5 sm:border-l-2 sm:border-emerald-500/40">
+            El tubo de Mikola es un instrumento de laboratorio para medir el ascenso de una burbuja de aire dentro de un líquido, según la inclinación del tubo y la viscosidad de la sustancia. Ajustá el ángulo, elegí el líquido, e iniciá el cronómetro para tomar tus mediciones.
+          </p>
+        </div>
+
+        <!-- Quick Action Bar: Theme Toggle + Jump to Tables and Graph -->
+        <div class="flex flex-wrap items-center gap-2.5 lg:self-end">
+          <!-- Day / Night Mode Toggle Button -->
+          <button id="btnThemeToggle" onclick="toggleTheme()"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100/90 dark:bg-slate-800/90 border border-slate-300/80 dark:border-slate-700 text-[#1e3a32] dark:text-amber-300 font-semibold text-sm shadow-sm hover:bg-white dark:hover:bg-slate-700 transition"
+            title="Cambiar entre Modo Día y Modo Noche">
+            <!-- Sun Icon (shown in Dark Mode) -->
+            <svg id="iconSun" class="w-4 h-4 hidden text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+            <!-- Moon Icon (shown in Light Mode) -->
+            <svg id="iconMoon" class="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <span id="themeToggleText">Modo Noche</span>
+          </button>
+
+          <button id="btnToggleTablesView" onclick="scrollToSection('seccionTablas')"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white dark:bg-slate-800 border border-[#cdd5ce] dark:border-slate-700 text-[#1e3a32] dark:text-slate-200 font-semibold text-sm shadow-sm hover:bg-[#f7f9f7] dark:hover:bg-slate-700 transition">
+            <svg class="w-4 h-4 text-amber-600 dark:text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>
+            Tablas de Resultados
+          </button>
+
+          <button onclick="generateAndScrollToGraph()"
+            class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-700 to-teal-600 hover:from-emerald-600 hover:to-teal-500 text-white font-semibold text-sm shadow-md transition">
+            <svg class="w-4 h-4 text-emerald-200" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+            Generar Gráfica
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- SIMULATOR MAIN GRID -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LEFT CONTROL PANEL -->
+      <div class="lg:col-span-4 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-[#dce2dc] dark:border-slate-800 shadow-sm p-5 sm:p-6 space-y-5 transition-colors">
+
+        <!-- Angle Control -->
+        <div>
+          <div class="flex items-center justify-between mb-2">
+            <label for="angleSlider" class="text-sm font-bold text-[#1e2925] dark:text-slate-200">Ángulo de inclinación</label>
+            <span id="angleValueDisplay" class="font-mono-lcd text-sm font-bold px-2.5 py-0.5 rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-400 border border-amber-500/20">-15°</span>
+          </div>
+          <input id="angleSlider" type="range" min="-45" max="45" step="1" value="-15" class="mikola-slider" />
+          <div class="flex justify-between text-[11px] text-gray-400 dark:text-slate-500 font-mono-lcd mt-1">
+            <span>-45°</span>
+            <span>-15°</span>
+            <span>0°</span>
+            <span>+15°</span>
+            <span>+45°</span>
+          </div>
+          <p class="text-xs text-[#606f67] dark:text-slate-400 leading-relaxed mt-2">
+            Positivo inclina el extremo derecho hacia arriba; negativo, el izquierdo. En 0° el tubo queda horizontal y la burbuja no se desplaza.
+          </p>
+        </div>
+
+        <!-- Substance Selector -->
+        <div>
+          <label for="substanceSelect" class="block text-sm font-bold text-[#1e2925] dark:text-slate-200 mb-1.5">Sustancia del tubo</label>
+          <select id="substanceSelect"
+            class="w-full rounded-xl border border-[#cbd5ce] dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm text-[#1e2925] dark:text-slate-100 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition">
+            <option value="agua" selected>Agua (η = 1.00)</option>
+            <option value="alcohol">Alcohol etílico (η = 1.20)</option>
+            <option value="aceite">Aceite de oliva (η = 2.40)</option>
+            <option value="glicerina">Glicerina diluida (η = 3.80)</option>
+            <option value="miel">Miel clara (η = 6.00)</option>
+          </select>
+          <p class="text-xs text-[#606f67] dark:text-slate-400 leading-relaxed mt-1.5">
+            A mayor viscosidad, más lento el ascenso de la burbuja.
+          </p>
+        </div>
+
+        <!-- Active Trial Selector for Table I auto-capture -->
+        <div class="pt-2 border-t border-[#eef1ee] dark:border-slate-800">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-xs font-bold uppercase tracking-wider text-[#4b5e54] dark:text-slate-400">Registro automático en Tabla I</span>
+            <span id="trialBadge" class="text-xs font-semibold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">Ensayo 1</span>
+          </div>
+          <div class="grid grid-cols-3 gap-1.5 bg-[#f3f6f4] dark:bg-slate-800/90 p-1 rounded-xl border border-[#e1e7e3] dark:border-slate-700">
+            <button type="button" onclick="selectActiveTrial(0)" id="trialBtn0"
+              class="py-1.5 text-xs font-bold rounded-lg transition bg-[#2d6258] dark:bg-emerald-600 text-white shadow-sm">
+              Tiempo 1
+            </button>
+            <button type="button" onclick="selectActiveTrial(1)" id="trialBtn1"
+              class="py-1.5 text-xs font-bold rounded-lg transition text-[#495a52] dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700">
+              Tiempo 2
+            </button>
+            <button type="button" onclick="selectActiveTrial(2)" id="trialBtn2"
+              class="py-1.5 text-xs font-bold rounded-lg transition text-[#495a52] dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700">
+              Tiempo 3
+            </button>
+          </div>
+          <label class="flex items-center gap-2 mt-2.5 cursor-pointer select-none">
+            <input id="humanJitterCheckbox" type="checkbox" checked
+              class="rounded border-gray-300 dark:border-slate-600 text-emerald-600 focus:ring-emerald-500 w-4 h-4" />
+            <span class="text-xs text-[#596960] dark:text-slate-400">Simular dispersión experimental realista (±0.04 s)</span>
+          </label>
+        </div>
+
+        <!-- Primary Action Buttons -->
+        <div class="space-y-2.5 pt-1">
+          <div class="grid grid-cols-2 gap-2.5">
+            <button id="btnStartPause" onclick="toggleSimulation()"
+              class="flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#2d6258] hover:bg-[#224c44] dark:bg-emerald-600 dark:hover:bg-emerald-500 text-white font-semibold text-sm shadow-sm transition">
+              <span id="btnStartPauseIcon">▶</span>
+              <span id="btnStartPauseText">Iniciar</span>
+            </button>
+
+            <button id="btnResetRun" onclick="resetCurrentRun()"
+              class="flex items-center justify-center py-2.5 px-4 rounded-xl bg-[#e7ece9] hover:bg-[#dbe2de] dark:bg-slate-800 dark:hover:bg-slate-700 border border-[#cdd5ce] dark:border-slate-700 text-[#1f332c] dark:text-slate-200 font-semibold text-sm transition">
+              Reiniciar tramo
+            </button>
+          </div>
+
+          <button id="btnFlipTube" onclick="flipTube()"
+            class="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl bg-[#9e6b30] hover:bg-[#835725] dark:bg-amber-600 dark:hover:bg-amber-500 text-white font-semibold text-sm shadow-sm transition">
+            <span>↻</span>
+            <span>Voltear tubo</span>
+          </button>
+
+          <!-- Fast-fill helper button for instant 3-trial simulation -->
+          <button onclick="simulateThreeTrialsInstantly()"
+            class="w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-800 dark:text-amber-300 font-semibold text-xs transition">
+            <span>⚡</span>
+            <span>Autocompletar los 3 Ensayos con configuración actual</span>
+          </button>
+        </div>
+
+        <!-- Status Message Box -->
+        <div id="statusBox" class="border-l-4 border-[#2d6258] dark:border-emerald-500 bg-[#eff3f0] dark:bg-slate-800/80 rounded-r-xl p-3.5 text-xs text-[#42544b] dark:text-slate-300 leading-relaxed">
+          Tubo listo. Presioná «Iniciar» para comenzar a medir. Los tiempos se registrarán al pasar por 20, 40, 60, 80 y 100 cm.
+        </div>
+      </div>
+
+      <!-- RIGHT SIMULATOR CANVAS PANEL -->
+      <div class="lg:col-span-8 bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-2xl border border-[#dce2dc] dark:border-slate-800 shadow-sm p-5 sm:p-6 flex flex-col justify-between transition-colors">
+
+        <!-- Digital LCD Readout Header -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 bg-[#0e1b15] dark:bg-[#060d0a] rounded-xl overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-[#22382c] border border-emerald-900/40 shadow-inner">
+          <!-- TIEMPO -->
+          <div class="p-4 sm:px-5">
+            <div class="text-[11px] font-mono-lcd uppercase tracking-wider text-emerald-500/80 mb-1">TIEMPO</div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="lcdTime" class="font-mono-lcd text-2xl sm:text-3xl font-bold text-[#5ce68b] drop-shadow-[0_0_8px_rgba(92,230,139,0.35)]">0.00</span>
+              <span class="font-mono-lcd text-sm text-emerald-500/70">s</span>
+            </div>
+          </div>
+
+          <!-- DISTANCIA -->
+          <div class="p-4 sm:px-5">
+            <div class="text-[11px] font-mono-lcd uppercase tracking-wider text-emerald-500/80 mb-1">DISTANCIA</div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="lcdDistance" class="font-mono-lcd text-2xl sm:text-3xl font-bold text-[#5ce68b] drop-shadow-[0_0_8px_rgba(92,230,139,0.35)]">0.0</span>
+              <span class="font-mono-lcd text-sm text-emerald-500/70">cm</span>
+            </div>
+          </div>
+
+          <!-- VELOCIDAD MEDIA -->
+          <div class="p-4 sm:px-5">
+            <div class="text-[11px] font-mono-lcd uppercase tracking-wider text-emerald-500/80 mb-1">VELOCIDAD MEDIA</div>
+            <div class="flex items-baseline gap-1.5">
+              <span id="lcdVelocity" class="font-mono-lcd text-2xl sm:text-3xl font-bold text-[#5ce68b] drop-shadow-[0_0_8px_rgba(92,230,139,0.35)]">0.000</span>
+              <span class="font-mono-lcd text-sm text-emerald-500/70">cm/s</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Live Sensor Checkpoints Strip (20, 40, 60, 80, 100 cm) -->
+        <div class="mt-4 flex flex-wrap items-center justify-between gap-2 px-3.5 py-2.5 rounded-xl bg-[#f7f9f7] dark:bg-slate-800/70 border border-[#e3e8e4] dark:border-slate-700/80">
+          <span class="text-xs font-semibold text-[#485950] dark:text-slate-300 flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            Sensores ópticos (<span id="activeTrialLabelInline">Tiempo 1</span>):
+          </span>
+          <div class="flex flex-wrap items-center gap-2">
+            <div id="sensorBadge20" class="px-2.5 py-1 rounded-lg text-xs font-mono-lcd bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400">
+              20cm: <strong class="text-gray-800 dark:text-slate-200">--</strong>
+            </div>
+            <div id="sensorBadge40" class="px-2.5 py-1 rounded-lg text-xs font-mono-lcd bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400">
+              40cm: <strong class="text-gray-800 dark:text-slate-200">--</strong>
+            </div>
+            <div id="sensorBadge60" class="px-2.5 py-1 rounded-lg text-xs font-mono-lcd bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400">
+              60cm: <strong class="text-gray-800 dark:text-slate-200">--</strong>
+            </div>
+            <div id="sensorBadge80" class="px-2.5 py-1 rounded-lg text-xs font-mono-lcd bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400">
+              80cm: <strong class="text-gray-800 dark:text-slate-200">--</strong>
+            </div>
+            <div id="sensorBadge100" class="px-2.5 py-1 rounded-lg text-xs font-mono-lcd bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400">
+              100cm: <strong class="text-gray-800 dark:text-slate-200">--</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Interactive SVG Tube Visualization -->
+        <div class="relative w-full overflow-hidden my-2 flex items-center justify-center" style="min-height: 360px;">
+          <svg id="mikolaSvg" viewBox="0 0 820 380" class="w-full h-auto max-h-[400px] select-none">
+            <defs>
+              <!-- Liquid gradient -->
+              <linearGradient id="liquidGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop id="liquidStop1" offset="0%" stop-color="#c3e3fd" />
+                <stop id="liquidStop2" offset="50%" stop-color="#d8eeff" />
+                <stop id="liquidStop3" offset="100%" stop-color="#b7dbfb" />
+              </linearGradient>
+
+              <!-- Glass specular highlight -->
+              <linearGradient id="glassHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#ffffff" stop-opacity="0.75" />
+                <stop offset="35%" stop-color="#ffffff" stop-opacity="0.1" />
+                <stop offset="100%" stop-color="#ffffff" stop-opacity="0.25" />
+              </linearGradient>
+
+              <!-- Bubble radial gradient -->
+              <radialGradient id="bubbleGrad" cx="35%" cy="30%" r="65%">
+                <stop offset="0%" stop-color="#ffffff" />
+                <stop offset="65%" stop-color="#e2e8f0" />
+                <stop offset="100%" stop-color="#94a3b8" />
+              </radialGradient>
+
+              <!-- Shadow filter -->
+              <filter id="tubeShadow" x="-10%" y="-20%" width="120%" height="150%">
+                <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#06b6d4" flood-opacity="0.12" />
+              </filter>
+            </defs>
+
+            <!-- Base Pedestal / Support Stand -->
+            <g id="pedestalGroup">
+              <!-- Vertical Support Rod -->
+              <rect id="pedestalRod" x="404" y="210" width="12" height="125" rx="3" fill="#94a3b8" />
+              <!-- Pivot joint -->
+              <circle cx="410" cy="210" r="10" fill="#64748b" />
+              <circle cx="410" cy="210" r="4" fill="#e2e8f0" />
+              <!-- Base Foot -->
+              <rect id="pedestalBase" x="355" y="330" width="110" height="14" rx="5" fill="#94a3b8" />
+            </g>
+
+            <!-- Rotating Tube Assembly (Pivots around cx=410, cy=210) -->
+            <g id="tubeAssembly" transform="rotate(15, 410, 210)" filter="url(#tubeShadow)">
+              <!-- Outer Glass Tube Border -->
+              <rect id="tubeOuterRect" x="105" y="186" width="610" height="48" rx="24"
+                fill="#cbd5ce" stroke="#94a3b8" stroke-width="2" />
+
+              <!-- Inner Liquid Chamber -->
+              <rect x="113" y="193" width="594" height="34" rx="17"
+                fill="url(#liquidGrad)" />
+
+              <!-- Subtle glass reflection stripe -->
+              <rect x="125" y="196" width="570" height="8" rx="4"
+                fill="url(#glassHighlight)" />
+
+              <!-- Cork Stopper at Left End (0 cm mark side) -->
+              <circle id="corkStopper" cx="130" cy="210" r="16" fill="#85582A" stroke="#69431d" stroke-width="1.5" />
+
+              <!-- Ruler Ticks & Labels Group (0 to 100 cm mapped from x=150 to x=670) -->
+              <g id="rulerGroup"></g>
+
+              <!-- Air Bubble (moves along tube between x=150 and x=670) -->
+              <g id="bubbleGroup" transform="translate(670, 210)">
+                <circle r="15" fill="url(#bubbleGrad)" stroke="#64748b" stroke-width="2" />
+                <ellipse cx="-5" cy="-5" rx="5" ry="3" transform="rotate(-25 -5 -5)" fill="#ffffff" opacity="0.95" />
+              </g>
+            </g>
+          </svg>
+        </div>
+
+        <!-- Bottom Quick Info & Navigation Bar inside Simulator Card -->
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-3 border-t border-[#eef1ee] dark:border-slate-800 text-xs text-[#5d6d64] dark:text-slate-400">
+          <div>
+            Fórmula didáctica: <span class="font-mono-lcd font-semibold text-[#1e3a32] dark:text-emerald-400">v = v₀ · |sin(θ)| / η</span>
+            <span class="mx-1.5">•</span>
+            Velocidad teórica actual: <strong id="theoreticalVelText" class="font-mono-lcd text-[#2d6258] dark:text-cyan-400">18.57 cm/s</strong>
+          </div>
+          <div class="flex items-center gap-2">
+            <button onclick="loadImageExampleData()"
+              class="px-3 py-1.5 rounded-lg bg-[#f3f6f4] dark:bg-slate-800 hover:bg-[#e4ebe7] dark:hover:bg-slate-700 text-[#23443a] dark:text-emerald-300 font-semibold transition border border-[#d0dad4] dark:border-slate-700">
+              📋 Cargar datos exactos de las imágenes (Tabla I y II)
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- FOOTNOTE CAPTION -->
+    <p class="text-xs text-[#606f67] dark:text-slate-400 max-w-3xl leading-relaxed">
+      Modelo simplificado con fines didácticos: la velocidad de la burbuja se calcula como <em>v = v₀ · sin(θ) / η</em>, donde θ es el ángulo de inclinación y η la viscosidad relativa de la sustancia elegida. La regla lateral está calibrada en centímetros a lo largo del eje del tubo (0 a 100 cm).
+    </p>
+
+    <!-- ===================================================================== -->
+    <!-- MODERNIZED RESULTS TABLES SECTION (TABLA I & TABLA II)                -->
+    <!-- ===================================================================== -->
+    <section id="seccionTablas" class="bg-white/95 dark:bg-slate-900/90 backdrop-blur-md rounded-3xl border border-[#dce2dc] dark:border-slate-800 shadow-lg p-6 sm:p-8 space-y-10 scroll-mt-6 transition-colors">
+
+      <!-- Section Header & Controls -->
+      <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-slate-800">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-400 text-xs font-bold uppercase tracking-wider mb-2">
+            Registro Experimental Digital
+          </div>
+          <h2 class="font-serif-title text-2xl sm:text-3xl text-[#132a23] dark:text-white">
+            Tablas de Resultados Experimentales
+          </h2>
+          <p class="text-sm text-[#5c6b63] dark:text-slate-400 mt-1">
+            Los tiempos se capturan automáticamente desde los sensores del tubo o podés editar cualquier celda en tiempo real.
+          </p>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2.5">
+          <button onclick="loadImageExampleData()"
+            class="px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold border border-slate-300 dark:border-slate-700 transition">
+            Restaurar valores de ejemplo
+          </button>
+          <button onclick="clearTablesData()"
+            class="px-3.5 py-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-semibold border border-rose-500/20 transition">
+            Vaciar tablas
+          </button>
+          <button onclick="generateAndScrollToGraph()"
+            class="pulse-btn inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white text-sm font-bold shadow-lg transition">
+            <svg class="w-4 h-4 text-cyan-200" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            Generar Gráfica Futurista
+          </button>
+        </div>
+      </div>
+
+      <!-- MODERN TABLA I CARD -->
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 max-w-4xl mx-auto">
+          <div class="flex items-center gap-3">
+            <span class="px-3.5 py-1 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 text-white font-extrabold text-sm tracking-wider shadow-sm">
+              TABLA I
+            </span>
+            <h3 class="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
+              Medición de Tiempos por Tramo (s)
+            </h3>
+          </div>
+          <span class="text-xs text-slate-500 dark:text-slate-400 font-mono-lcd">
+            Celdas interactivas • Editables
+          </span>
+        </div>
+
+        <div class="max-w-4xl mx-auto overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-md bg-white dark:bg-slate-900">
+          <div class="overflow-x-auto">
+            <table class="modern-table">
+              <thead>
+                <!-- Top Banner Row: DISTANCIA -->
+                <tr>
+                  <th class="bg-slate-100 dark:bg-slate-800/90 border-b border-r border-slate-200 dark:border-slate-700 py-3 px-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                    Parámetro
+                  </th>
+                  <th colspan="5" class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-500 text-white font-extrabold text-sm sm:text-base tracking-widest uppercase py-3 shadow-inner">
+                    DISTANCIA RECORRIDA (cm)
+                  </th>
+                </tr>
+                <!-- Subheader Row: TIEMPOS & Checkpoints -->
+                <tr class="border-b border-slate-200 dark:border-slate-700">
+                  <th class="bg-emerald-500/15 dark:bg-emerald-500/20 text-emerald-900 dark:text-emerald-300 font-extrabold text-xs sm:text-sm uppercase tracking-wider w-40 py-3.5 px-4 border-r border-slate-200 dark:border-slate-700">
+                    TIEMPOS (s)
+                  </th>
+                  <th class="bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 font-mono-lcd font-bold text-sm sm:text-base py-3.5 border-r border-slate-200/70 dark:border-slate-800">20 cm</th>
+                  <th class="bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 font-mono-lcd font-bold text-sm sm:text-base py-3.5 border-r border-slate-200/70 dark:border-slate-800">40 cm</th>
+                  <th class="bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 font-mono-lcd font-bold text-sm sm:text-base py-3.5 border-r border-slate-200/70 dark:border-slate-800">60 cm</th>
+                  <th class="bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 font-mono-lcd font-bold text-sm sm:text-base py-3.5 border-r border-slate-200/70 dark:border-slate-800">80 cm</th>
+                  <th class="bg-amber-50/90 dark:bg-amber-950/40 text-amber-900 dark:text-amber-300 font-mono-lcd font-bold text-sm sm:text-base py-3.5">100 cm</th>
+                </tr>
+              </thead>
+              <tbody id="tabla1Body" class="divide-y divide-slate-200 dark:divide-slate-800">
+                <!-- Row 1 -->
+                <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                  <td class="bg-sky-500/10 dark:bg-sky-500/15 font-bold text-sky-900 dark:text-sky-300 text-sm py-3 px-4 border-r border-slate-200 dark:border-slate-700">
+                    <span class="inline-flex items-center gap-2">
+                      <span class="w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-extrabold flex items-center justify-center shadow-sm">1</span>
+                      <span>Ensayo 1</span>
+                    </span>
+                  </td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_0_0" oninput="onTableCellInput(0,0,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_0_1" oninput="onTableCellInput(0,1,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_0_2" oninput="onTableCellInput(0,2,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_0_3" oninput="onTableCellInput(0,3,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2"><input type="number" step="0.01" min="0" id="t_0_4" oninput="onTableCellInput(0,4,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                </tr>
+                <!-- Row 2 -->
+                <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                  <td class="bg-sky-500/10 dark:bg-sky-500/15 font-bold text-sky-900 dark:text-sky-300 text-sm py-3 px-4 border-r border-slate-200 dark:border-slate-700">
+                    <span class="inline-flex items-center gap-2">
+                      <span class="w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-extrabold flex items-center justify-center shadow-sm">2</span>
+                      <span>Ensayo 2</span>
+                    </span>
+                  </td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_1_0" oninput="onTableCellInput(1,0,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_1_1" oninput="onTableCellInput(1,1,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_1_2" oninput="onTableCellInput(1,2,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_1_3" oninput="onTableCellInput(1,3,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2"><input type="number" step="0.01" min="0" id="t_1_4" oninput="onTableCellInput(1,4,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                </tr>
+                <!-- Row 3 -->
+                <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition">
+                  <td class="bg-sky-500/10 dark:bg-sky-500/15 font-bold text-sky-900 dark:text-sky-300 text-sm py-3 px-4 border-r border-slate-200 dark:border-slate-700">
+                    <span class="inline-flex items-center gap-2">
+                      <span class="w-6 h-6 rounded-full bg-sky-500 text-white text-xs font-extrabold flex items-center justify-center shadow-sm">3</span>
+                      <span>Ensayo 3</span>
+                    </span>
+                  </td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_2_0" oninput="onTableCellInput(2,0,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_2_1" oninput="onTableCellInput(2,1,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_2_2" oninput="onTableCellInput(2,2,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2 border-r border-slate-100 dark:border-slate-800"><input type="number" step="0.01" min="0" id="t_2_3" oninput="onTableCellInput(2,3,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                  <td class="p-2"><input type="number" step="0.01" min="0" id="t_2_4" oninput="onTableCellInput(2,4,this.value)" class="w-full text-center font-mono-lcd font-semibold text-base bg-transparent text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-emerald-500/10 rounded-lg py-1.5 transition" /></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODERN TABLA II CARD -->
+      <div class="space-y-4 pt-2">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 max-w-4xl mx-auto">
+          <div class="flex items-center gap-3">
+            <span class="px-3.5 py-1 rounded-xl bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-extrabold text-sm tracking-wider shadow-sm">
+              TABLA II
+            </span>
+            <h3 class="text-base sm:text-lg font-bold text-slate-800 dark:text-slate-100">
+              Tiempos Promedios (t̄) y Velocidad Media por Tramo (v = d / t̄)
+            </h3>
+          </div>
+          <span class="text-xs text-emerald-600 dark:text-emerald-400 font-mono-lcd font-semibold">
+            ● Cálculo automático en tiempo real
+          </span>
+        </div>
+
+        <div class="max-w-4xl mx-auto overflow-hidden rounded-2xl border border-slate-200 dark:border-slate-700/80 shadow-md bg-white dark:bg-slate-900">
+          <div class="overflow-x-auto">
+            <table class="modern-table">
+              <thead>
+                <tr class="border-b border-slate-200 dark:border-slate-700">
+                  <th class="bg-emerald-600/15 dark:bg-emerald-500/20 text-emerald-950 dark:text-emerald-300 font-extrabold text-xs sm:text-sm uppercase tracking-wider w-48 py-4 px-4 border-r border-slate-200 dark:border-slate-700">
+                    DISTANCIAS
+                  </th>
+                  <th class="bg-sky-500/15 dark:bg-sky-900/40 text-sky-950 dark:text-sky-300 font-mono-lcd font-bold text-sm sm:text-base py-4 border-r border-slate-200/70 dark:border-slate-800">20 cm</th>
+                  <th class="bg-sky-500/15 dark:bg-sky-900/40 text-sky-950 dark:text-sky-300 font-mono-lcd font-bold text-sm sm:text-base py-4 border-r border-slate-200/70 dark:border-slate-800">40 cm</th>
+                  <th class="bg-sky-500/15 dark:bg-sky-900/40 text-sky-950 dark:text-sky-300 font-mono-lcd font-bold text-sm sm:text-base py-4 border-r border-slate-200/70 dark:border-slate-800">60 cm</th>
+                  <th class="bg-sky-500/15 dark:bg-sky-900/40 text-sky-950 dark:text-sky-300 font-mono-lcd font-bold text-sm sm:text-base py-4 border-r border-slate-200/70 dark:border-slate-800">80 cm</th>
+                  <th class="bg-sky-500/15 dark:bg-sky-900/40 text-sky-950 dark:text-sky-300 font-mono-lcd font-bold text-sm sm:text-base py-4">100 cm</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-200 dark:divide-slate-800">
+                <!-- TIEMPOS PROMEDIOS -->
+                <tr class="hover:bg-cyan-50/40 dark:hover:bg-cyan-950/20 transition">
+                  <td class="bg-cyan-500/15 dark:bg-cyan-500/20 text-cyan-950 dark:text-cyan-300 font-extrabold text-xs sm:text-sm leading-snug py-4 px-4 border-r border-slate-200 dark:border-slate-700">
+                    TIEMPOS<br /><span class="text-[11px] font-semibold opacity-80">(PROMEDIOS s)</span>
+                  </td>
+                  <td id="avg_t_0" class="font-mono-lcd text-slate-800 dark:text-cyan-200 font-bold text-base sm:text-lg py-4 border-r border-slate-100 dark:border-slate-800">--</td>
+                  <td id="avg_t_1" class="font-mono-lcd text-slate-800 dark:text-cyan-200 font-bold text-base sm:text-lg py-4 border-r border-slate-100 dark:border-slate-800">--</td>
+                  <td id="avg_t_2" class="font-mono-lcd text-slate-800 dark:text-cyan-200 font-bold text-base sm:text-lg py-4 border-r border-slate-100 dark:border-slate-800">--</td>
+                  <td id="avg_t_3" class="font-mono-lcd text-slate-800 dark:text-cyan-200 font-bold text-base sm:text-lg py-4 border-r border-slate-100 dark:border-slate-800">--</td>
+                  <td id="avg_t_4" class="font-mono-lcd text-slate-800 dark:text-cyan-200 font-bold text-base sm:text-lg py-4">--</td>
+                </tr>
+                <!-- VELOCIDAD MEDIA -->
+                <tr class="hover:bg-amber-50/40 dark:hover:bg-amber-950/20 transition">
+                  <td class="bg-amber-500/20 dark:bg-amber-500/20 text-amber-950 dark:text-amber-300 font-extrabold text-xs sm:text-sm leading-snug py-4 px-4 border-r border-slate-200 dark:border-slate-700">
+                    VELOCIDAD<br /><span class="text-[11px] font-semibold opacity-80">MEDIA (cm/s)</span>
+                  </td>
+                  <td id="vel_m_0" class="font-mono-lcd text-emerald-700 dark:text-emerald-400 font-bold text-base sm:text-lg py-4 border-r border-slate-100 dark:border-slate-800">--</td>
+                  <td id="vel_m_1" class="font-mono-lcd text-emerald-700 dark:text-emerald-400 font-bold text-base sm:text-lg py-4 border-r border-slate-100 dark:border-slate-800">--</td>
+                  <td id="vel_m_2" class="font-mono-lcd text-emerald-700 dark:text-emerald-400 font-bold text-base sm:text-lg py-4 border-r border-slate-100 dark:border-slate-800">--</td>
+                  <td id="vel_m_3" class="font-mono-lcd text-emerald-700 dark:text-emerald-400 font-bold text-base sm:text-lg py-4 border-r border-slate-100 dark:border-slate-800">--</td>
+                  <td id="vel_m_4" class="font-mono-lcd text-emerald-700 dark:text-emerald-400 font-bold text-base sm:text-lg py-4">--</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Question 8 & Modernized Average Velocity Telemetry Banner -->
+        <div class="max-w-4xl mx-auto pt-4">
+          <div class="rounded-2xl bg-gradient-to-r from-slate-50 via-emerald-50/50 to-cyan-50/40 dark:from-slate-800/90 dark:via-emerald-950/40 dark:to-cyan-950/40 border border-emerald-500/30 p-5 sm:p-6 shadow-md flex flex-col md:flex-row items-center justify-between gap-6">
+            <div class="space-y-2 text-center md:text-left">
+              <div class="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                <span class="px-2 py-0.5 rounded bg-emerald-500 text-white">Pregunta 8</span>
+                Conclusión Cinemática
+              </div>
+              <p class="text-sm sm:text-base font-medium text-slate-800 dark:text-slate-200">
+                Halle la velocidad promedio de la burbuja a lo largo de toda la trayectoria:
+              </p>
+              <div id="vpFormulaBreakdown" class="text-xs text-slate-600 dark:text-slate-400 font-mono-lcd bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 inline-block">
+                Vp = (18.51 + 18.69 + 18.40 + 18.69 + 18.55) / 5 = 18.57 cm/s
+              </div>
+            </div>
+
+            <!-- Highlighted Vp Result Box -->
+            <div class="shrink-0 relative group">
+              <div class="absolute -inset-0.5 bg-gradient-to-r from-rose-500 via-amber-500 to-emerald-500 rounded-2xl blur opacity-40 group-hover:opacity-70 transition"></div>
+              <div class="relative rounded-2xl bg-white dark:bg-slate-950 border-2 border-rose-500/80 dark:border-emerald-400/80 px-7 py-4 text-center shadow-lg">
+                <div class="text-[10px] font-mono-lcd uppercase tracking-widest text-slate-400 mb-0.5">Velocidad Promedio</div>
+                <span class="font-serif-title italic font-bold text-2xl sm:text-3xl text-slate-900 dark:text-white tracking-wide">
+                  V<sub>p</sub> = <span id="finalVpDisplay" class="text-rose-600 dark:text-emerald-400 font-mono-lcd not-italic">18.57</span> cm/s
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- FUTURISTIC INTERACTIVE CARTESIAN PLANE SECTION                        -->
+    <!-- ===================================================================== -->
+    <section id="seccionGrafica" class="hud-frame bg-[#08120f] dark:bg-[#050b09] text-slate-100 rounded-3xl border border-emerald-500/30 shadow-2xl p-6 sm:p-8 space-y-6 scroll-mt-6 relative overflow-hidden">
+
+      <!-- Ambient Futuristic Neon Glow Orbs -->
+      <div class="pointer-events-none absolute -top-24 -right-24 w-96 h-96 rounded-full bg-cyan-500/10 blur-3xl"></div>
+      <div class="pointer-events-none absolute -bottom-24 -left-24 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl"></div>
+
+      <div class="relative flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-5 border-b border-emerald-500/20">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-400/30 text-cyan-300 text-xs font-mono-lcd uppercase tracking-widest mb-2">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+            TELEMETRÍA MRU • PLANO CARTESIANO INTERACTIVO
+          </div>
+          <h2 class="font-serif-title text-2xl sm:text-3xl text-white tracking-tight">
+            Consola Gráfica de Análisis Cinemático
+          </h2>
+          <p class="text-sm text-slate-400 mt-1">
+            Explorá el plano cartesiano con el escáner láser interactivo para inspeccionar coordenadas, dispersión de ensayos y ajuste lineal.
+          </p>
+        </div>
+
+        <!-- Graph Mode Selector & Export -->
+        <div class="flex flex-wrap items-center gap-2.5">
+          <div class="inline-flex rounded-xl bg-slate-900/90 p-1 border border-slate-700/80">
+            <button id="tabGraphDT" onclick="setGraphMode('d_vs_t')"
+              class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 shadow-md">
+              Distancia vs. Tiempo (d - t)
+            </button>
+            <button id="tabGraphTD" onclick="setGraphMode('t_vs_d')"
+              class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">
+              Tiempo vs. Distancia (t - d)
+            </button>
+            <button id="tabGraphVD" onclick="setGraphMode('v_vs_d')"
+              class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white">
+              Velocidad vs. Distancia (v - d)
+            </button>
+          </div>
+
+          <button onclick="downloadGraphPNG()"
+            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 border border-cyan-400/40 text-cyan-300 text-xs font-mono-lcd font-semibold shadow-sm transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            EXPORTAR PNG
+          </button>
+        </div>
+      </div>
+
+      <!-- Layer Toggles & Live Coordinate Inspector Bar -->
+      <div class="relative flex flex-wrap items-center justify-between gap-4 bg-slate-900/80 px-4 py-3 rounded-2xl border border-emerald-500/20 backdrop-blur-sm">
+        <div class="flex flex-wrap items-center gap-5 text-xs font-medium text-slate-300">
+          <label class="inline-flex items-center gap-2 cursor-pointer hover:text-white transition">
+            <input type="checkbox" id="chkShowAvgPoints" checked onchange="drawCartesianGraph(false)"
+              class="rounded bg-slate-800 border-slate-600 text-cyan-400 focus:ring-cyan-500" />
+            <span class="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-[0_0_8px_#22d3ee] inline-block"></span>
+            Nodos Promedio (Tabla II)
+          </label>
+
+          <label class="inline-flex items-center gap-2 cursor-pointer hover:text-white transition">
+            <input type="checkbox" id="chkShowTrials" checked onchange="drawCartesianGraph(false)"
+              class="rounded bg-slate-800 border-slate-600 text-amber-400 focus:ring-amber-500" />
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 shadow-[0_0_8px_#fbbf24] inline-block"></span>
+            Ensayos 1, 2 y 3 (Tabla I)
+          </label>
+
+          <label class="inline-flex items-center gap-2 cursor-pointer hover:text-white transition">
+            <input type="checkbox" id="chkShowTrendline" checked onchange="drawCartesianGraph(false)"
+              class="rounded bg-slate-800 border-slate-600 text-emerald-400 focus:ring-emerald-500" />
+            <span class="w-3.5 h-0.5 bg-emerald-400 shadow-[0_0_8px_#34d399] inline-block"></span>
+            Láser de Regresión Lineal (MRU)
+          </label>
+
+          <label class="inline-flex items-center gap-2 cursor-pointer hover:text-white transition">
+            <input type="checkbox" id="chkShowSlopeTriangle" checked onchange="drawCartesianGraph(false)"
+              class="rounded bg-slate-800 border-slate-600 text-purple-400 focus:ring-purple-500" />
+            <span class="text-amber-300">📐 Holograma de Pendiente (Δd/Δt)</span>
+          </label>
+        </div>
+
+        <!-- Live Cursor Coordinates Display -->
+        <div id="cursorCoordsBadge" class="font-mono-lcd text-xs bg-[#040907] border border-emerald-500/40 text-[#5ce68b] px-3.5 py-1.5 rounded-lg shadow-[0_0_12px_rgba(16,185,129,0.2)]">
+          ESCÁNER: [X: -- , Y: --]
+        </div>
+      </div>
+
+      <!-- Futuristic Canvas Wrapper -->
+      <div class="relative w-full bg-[#040a08] rounded-2xl border border-cyan-500/30 p-2 sm:p-4 shadow-[inset_0_0_30px_rgba(6,182,212,0.08)]">
+        <canvas id="cartesianCanvas" class="w-full h-[450px] sm:h-[520px] block cursor-crosshair"></canvas>
+      </div>
+
+      <!-- Analytical HUD Summary Cards below Graph -->
+      <div class="relative grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
+        <div class="p-4 rounded-2xl bg-slate-900/90 border border-emerald-500/25 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono-lcd uppercase tracking-wider text-emerald-400">Ecuación Empírica MRU</span>
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          </div>
+          <div id="graphEquationText" class="font-mono-lcd text-xl font-bold text-white mt-1.5">
+            d(t) = 18.57 · t
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            La pendiente de la recta equivale a la rapidez media constante de ascenso de la burbuja.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-slate-900/90 border border-cyan-500/25 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono-lcd uppercase tracking-wider text-cyan-400">Ajuste Lineal (R²)</span>
+            <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+          </div>
+          <div id="graphR2Text" class="font-mono-lcd text-xl font-bold text-cyan-300 mt-1.5">
+            R² = 0.9999
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Precisión estadística del modelo rectilíneo uniforme respecto a los datos medidos.
+          </p>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-slate-900/90 border border-amber-500/25 shadow-lg">
+          <div class="flex items-center justify-between">
+            <span class="text-[11px] font-mono-lcd uppercase tracking-wider text-amber-400">Tiempo Medio (100 cm)</span>
+            <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+          </div>
+          <div id="graphTotalTimeText" class="font-mono-lcd text-xl font-bold text-amber-300 mt-1.5">
+            t̄₁₀₀ = 5.39 s
+          </div>
+          <p class="text-xs text-slate-400 mt-1">
+            Tiempo promedio empleado por la burbuja para completar la longitud total del tubo.
+          </p>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- FOOTER CREDIT BANNER                                                  -->
+    <!-- ===================================================================== -->
+    <footer class="dynamic-author-card relative overflow-hidden rounded-3xl bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl border-2 border-emerald-500/30 dark:border-emerald-400/30 px-6 py-6 sm:px-8 flex flex-col sm:flex-row items-center justify-between gap-5 transition-all duration-300">
+      <!-- Top animated thin rainbow bar -->
+      <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-emerald-500 via-cyan-500 via-indigo-500 to-amber-500"></div>
+
+      <div class="flex items-center gap-4 text-center sm:text-left flex-col sm:flex-row">
+        <!-- Monogram Emblem -->
+        <div class="relative group shrink-0">
+          <div class="absolute -inset-1 rounded-2xl bg-gradient-to-r from-emerald-500 via-cyan-500 to-amber-500 opacity-60 blur-sm group-hover:opacity-100 transition duration-500"></div>
+          <div class="relative w-13 h-13 px-3 py-2 rounded-2xl bg-slate-900 dark:bg-slate-950 border border-white/20 flex items-center justify-center font-cursive-signature text-2xl sm:text-3xl dynamic-author-text shadow-md">
+            JD
+          </div>
+        </div>
+
+        <!-- Dynamic Cursive Signature Text -->
+        <div>
+          <div class="text-[11px] font-mono-lcd uppercase tracking-[0.22em] text-slate-400 dark:text-slate-500 mb-0.5">
+            Autoría &amp; Desarrollo Educativo
+          </div>
+          <p class="flex flex-wrap items-baseline justify-center sm:justify-start gap-2 text-slate-700 dark:text-slate-200">
+            <span class="font-serif-title italic text-base sm:text-lg text-slate-500 dark:text-slate-400">Diseñado por</span>
+            <span class="font-cursive-signature text-3xl sm:text-4xl dynamic-author-text drop-shadow-sm">Prof. Jhon Dewis</span>
+          </p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2.5 text-xs font-mono-lcd text-slate-600 dark:text-slate-300 bg-slate-100/90 dark:bg-slate-800/90 px-4 py-2 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-sm">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+        </span>
+        <span>Laboratorio de Física • Tubo de Mikola</span>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- ===================================================================== -->
+  <!-- APPLICATION LOGIC & INTERACTIVE PHYSICS + FUTURISTIC GRAPH ENGINE     -->
+  <!-- ===================================================================== -->
+  <script>
+    /*************************************************************************
+     * 0. THEME MANAGEMENT (MODO DÍA / MODO NOCHE)
+     *************************************************************************/
+    let isDarkMode = false;
+
+    function toggleTheme() {
+      isDarkMode = !isDarkMode;
+      const htmlEl = document.documentElement;
+      const iconSun = document.getElementById('iconSun');
+      const iconMoon = document.getElementById('iconMoon');
+      const themeText = document.getElementById('themeToggleText');
+
+      if (isDarkMode) {
+        htmlEl.classList.add('dark');
+        iconSun.classList.remove('hidden');
+        iconMoon.classList.add('hidden');
+        themeText.textContent = 'Modo Día';
+      } else {
+        htmlEl.classList.remove('dark');
+        iconSun.classList.add('hidden');
+        iconMoon.classList.remove('hidden');
+        themeText.textContent = 'Modo Noche';
+      }
+
+      buildSvgRulerTicks();
+      drawCartesianGraph(false);
+    }
+
+    /*************************************************************************
+     * 1. STATE & CONSTANTS
+     *************************************************************************/
+    const DISTANCES = [20, 40, 60, 80, 100]; // cm checkpoints
+
+    // Calibrated so that at |θ| = 15° in Agua (η = 1.0), v ≈ 18.57 cm/s,
+    // matching the exact data from Tabla I & Tabla II in the user's images!
+    const V0_CONSTANT = 71.75; // cm/s base velocity constant
+
+    const SUBSTANCES = {
+      agua: {
+        name: 'Agua',
+        eta: 1.00,
+        stops: ['#c3e3fd', '#d8eeff', '#b7dbfb']
+      },
+      alcohol: {
+        name: 'Alcohol etílico',
+        eta: 1.20,
+        stops: ['#d2e9ff', '#e6f3ff', '#c5e2ff']
+      },
+      aceite: {
+        name: 'Aceite de oliva',
+        eta: 2.40,
+        stops: ['#f5e6a6', '#faf1c8', '#edd985']
+      },
+      glicerina: {
+        name: 'Glicerina diluida',
+        eta: 3.80,
+        stops: ['#e0ecf2', '#f0f6fa', '#d2e2eb']
+      },
+      miel: {
+        name: 'Miel clara',
+        eta: 6.00,
+        stops: ['#f6c967', '#fbe09c', '#edb847']
+      }
+    };
+
+    // Exact default values from Image 2 (TABLA I) & Image 3 (TABLA II)
+    const IMAGE_EXAMPLE_TRIALS = [
+      [1.00, 2.11, 3.20, 4.32, 5.41], // Tiempo 1
+      [1.12, 2.15, 3.28, 4.26, 5.40], // Tiempo 2
+      [1.14, 2.16, 3.30, 4.28, 5.38]  // Tiempo 3
+    ];
+
+    // Simulator State
+    let simState = {
+      angleDeg: -15,          // -45 to +45 degrees
+      substanceKey: 'agua',
+      isRunning: false,
+      elapsedTime: 0,         // seconds
+      distanceTraveled: 0,    // 0 to 100 cm
+      bubbleStartEnd: 'right',// 'right' (at 100cm mark moving to 0) or 'left' (at 0cm mark moving to 100)
+      activeTrialIndex: 0,    // 0, 1, or 2 (Tiempo 1, 2, 3)
+      capturedCheckpoints: [false, false, false, false, false],
+      trialJitterFactors: [0, 0, 0, 0, 0],
+      lastFrameTimestamp: null
+    };
+
+    // Table I Data: 3 rows (trials) x 5 columns (20, 40, 60, 80, 100 cm)
+    let table1Data = [
+      [1.00, 2.11, 3.20, 4.32, 5.41],
+      [1.12, 2.15, 3.28, 4.26, 5.40],
+      [1.14, 2.16, 3.30, 4.28, 5.38]
+    ];
+
+    // Graph State
+    let graphMode = 'd_vs_t'; // 'd_vs_t' | 't_vs_d' | 'v_vs_d'
+    let hoverMousePos = null;
+    let graphAnimProgress = 1;
+    let graphAnimFrame = null;
+
+    /*************************************************************************
+     * 2. INITIALIZATION & SVG RULER GENERATION
+     *************************************************************************/
+    window.onload = function () {
+      buildSvgRulerTicks();
+      setupEventListeners();
+      updateSubstanceVisuals();
+      updateTubeTransformAndBubble();
+      populateTable1InputsFromState();
+      recalculateTable2AndVp();
+      drawCartesianGraph(true);
+
+      // Start main animation loop
+      requestAnimationFrame(simulationLoop);
+    };
+
+    /**
+     * Generates the calibrated ruler markings along the tube (0 to 100 cm).
+     * X=150 corresponds to 0 cm, X=670 corresponds to 100 cm (5.2 px per cm).
+     */
+    function buildSvgRulerTicks() {
+      const rulerGroup = document.getElementById('rulerGroup');
+      rulerGroup.innerHTML = '';
+
+      const startX = 150;
+      const pxPerCm = 5.2; // 100 cm = 520 px
+
+      for (let cm = 0; cm <= 100; cm += 5) {
+        const x = startX + cm * pxPerCm;
+        const isMajor = cm % 10 === 0;
+        const isCheckpoint = cm > 0 && cm % 20 === 0;
+
+        // Tick line above tube
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', x);
+        line.setAttribute('x2', x);
+        line.setAttribute('y1', isMajor ? 162 : 171);
+        line.setAttribute('y2', 182);
+        if (isDarkMode) {
+          line.setAttribute('stroke', isCheckpoint ? '#34d399' : (isMajor ? '#cbd5e1' : '#64748b'));
+        } else {
+          line.setAttribute('stroke', isCheckpoint ? '#2d6258' : (isMajor ? '#374151' : '#9ca3af'));
+        }
+        line.setAttribute('stroke-width', isCheckpoint ? '2.6' : (isMajor ? '2' : '1.3'));
+        line.setAttribute('stroke-linecap', 'round');
+        rulerGroup.appendChild(line);
+
+        // Label every 10 cm
+        if (isMajor) {
+          const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+          text.setAttribute('x', x);
+          text.setAttribute('y', 152);
+          text.setAttribute('text-anchor', 'middle');
+          if (isDarkMode) {
+            text.setAttribute('fill', isCheckpoint ? '#5ce68b' : '#e2e8f0');
+          } else {
+            text.setAttribute('fill', isCheckpoint ? '#132a23' : '#374151');
+          }
+          text.setAttribute('font-family', 'JetBrains Mono, monospace');
+          text.setAttribute('font-size', isCheckpoint ? '12.5' : '11.5');
+          text.setAttribute('font-weight', isCheckpoint ? '700' : '600');
+          text.textContent = cm;
+          rulerGroup.appendChild(text);
+        }
+
+        // Subtle optical sensor dot on tube rim for 20, 40, 60, 80, 100 cm
+        if (isCheckpoint) {
+          const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+          dot.setAttribute('id', `svgSensorDot_${cm}`);
+          dot.setAttribute('cx', x);
+          dot.setAttribute('cy', 186);
+          dot.setAttribute('r', '3.5');
+          dot.setAttribute('fill', '#f59e0b');
+          rulerGroup.appendChild(dot);
+        }
+      }
+    }
+
+    function setupEventListeners() {
+      const angleSlider = document.getElementById('angleSlider');
+      angleSlider.addEventListener('input', (e) => {
+        simState.angleDeg = parseFloat(e.target.value);
+        document.getElementById('angleValueDisplay').textContent = `${simState.angleDeg > 0 ? '+' : ''}${simState.angleDeg}°`;
+        updateTheoreticalVelocityDisplay();
+        updateTubeTransformAndBubble();
+      });
+
+      const substanceSelect = document.getElementById('substanceSelect');
+      substanceSelect.addEventListener('change', (e) => {
+        simState.substanceKey = e.target.value;
+        updateSubstanceVisuals();
+        updateTheoreticalVelocityDisplay();
+      });
+
+      // Canvas hover / touch events for Cartesian Graph
+      const canvas = document.getElementById('cartesianCanvas');
+      canvas.addEventListener('mousemove', handleCanvasPointerMove);
+      canvas.addEventListener('mouseleave', () => {
+        hoverMousePos = null;
+        document.getElementById('cursorCoordsBadge').textContent = 'ESCÁNER: [X: -- , Y: --]';
+        drawCartesianGraph(false);
+      });
+      canvas.addEventListener('touchstart', handleCanvasTouch, { passive: true });
+      canvas.addEventListener('touchmove', handleCanvasTouch, { passive: true });
+
+      window.addEventListener('resize', () => {
+        drawCartesianGraph(false);
+      });
+    }
+
+    /*************************************************************************
+     * 3. SIMULATOR PHYSICS & CONTROLS
+     *************************************************************************/
+    function getTheoreticalVelocity() {
+      const thetaRad = Math.abs(simState.angleDeg) * (Math.PI / 180);
+      const eta = SUBSTANCES[simState.substanceKey].eta;
+      return (V0_CONSTANT * Math.sin(thetaRad)) / eta;
+    }
+
+    function updateTheoreticalVelocityDisplay() {
+      const v = getTheoreticalVelocity();
+      document.getElementById('theoreticalVelText').textContent = `${v.toFixed(2)} cm/s`;
+    }
+
+    function updateSubstanceVisuals() {
+      const sub = SUBSTANCES[simState.substanceKey];
+      document.getElementById('liquidStop1').setAttribute('stop-color', sub.stops[0]);
+      document.getElementById('liquidStop2').setAttribute('stop-color', sub.stops[1]);
+      document.getElementById('liquidStop3').setAttribute('stop-color', sub.stops[2]);
+    }
+
+    /**
+     * Positive angle tilts the right end UP (so SVG rotate is negative counter-clockwise).
+     * Negative angle tilts the left end UP (so SVG rotate is positive clockwise).
+     */
+    function updateTubeTransformAndBubble() {
+      const svgRotationDeg = -simState.angleDeg;
+      const tubeAssembly = document.getElementById('tubeAssembly');
+      tubeAssembly.setAttribute('transform', `rotate(${svgRotationDeg}, 410, 210)`);
+
+      // Map distanceTraveled (0 to 100 cm) to bubble X coordinate along the tube
+      // If angleDeg < 0, left end (0 cm mark) is higher, so bubble rises from right (x=670) toward left (x=150).
+      // If angleDeg > 0, right end (100 cm mark) is higher, so bubble rises from left (x=150) toward right (x=670).
+      const startX = 150;
+      const endX = 670;
+      const pxPerCm = 5.2;
+
+      let bubbleX;
+      if (simState.bubbleStartEnd === 'right') {
+        bubbleX = endX - simState.distanceTraveled * pxPerCm;
+      } else {
+        bubbleX = startX + simState.distanceTraveled * pxPerCm;
+      }
+
+      const bubbleGroup = document.getElementById('bubbleGroup');
+      bubbleGroup.setAttribute('transform', `translate(${bubbleX}, 210)`);
+    }
+
+    function prepareJitterForRun() {
+      const useJitter = document.getElementById('humanJitterCheckbox').checked;
+      simState.trialJitterFactors = DISTANCES.map(() => {
+        if (!useJitter) return 0;
+        // Realistic small reaction time jitter between -0.05s and +0.05s
+        return (Math.random() - 0.5) * 0.09;
+      });
+    }
+
+    function toggleSimulation() {
+      if (simState.angleDeg === 0) {
+        setStatusMessage('En 0° el tubo está horizontal y la burbuja no asciende. Incliná el tubo primero.', 'warn');
+        return;
+      }
+
+      // Check if completed 100 cm
+      if (simState.distanceTraveled >= 100) {
+        resetCurrentRun();
+      }
+
+      // Ensure bubble starts at the lower end so it rises naturally
+      if (simState.elapsedTime === 0 && simState.distanceTraveled === 0) {
+        simState.bubbleStartEnd = simState.angleDeg < 0 ? 'right' : 'left';
+        prepareJitterForRun();
+      }
+
+      simState.isRunning = !simState.isRunning;
+      simState.lastFrameTimestamp = null;
+
+      updateStartPauseButtonUI();
+
+      if (simState.isRunning) {
+        setStatusMessage(
+          `Midiendo Ensayo ${simState.activeTrialIndex + 1} con ${SUBSTANCES[simState.substanceKey].name} a ${simState.angleDeg}°...`,
+          'active'
+        );
+      } else {
+        setStatusMessage('Simulación en pausa. Presioná «Continuar» o «Reiniciar tramo».', 'neutral');
+      }
+    }
+
+    function resetCurrentRun() {
+      simState.isRunning = false;
+      simState.elapsedTime = 0;
+      simState.distanceTraveled = 0;
+      simState.lastFrameTimestamp = null;
+      simState.capturedCheckpoints = [false, false, false, false, false];
+      simState.bubbleStartEnd = simState.angleDeg <= 0 ? 'right' : 'left';
+
+      updateStartPauseButtonUI();
+      updateLcdDisplay(0, 0, 0);
+      resetSensorBadgesUI();
+      updateTubeTransformAndBubble();
+      setStatusMessage('Tramo reiniciado. Presioná «Iniciar» para comenzar a medir.', 'neutral');
+    }
+
+    function flipTube() {
+      simState.isRunning = false;
+      simState.angleDeg = -simState.angleDeg;
+      if (simState.angleDeg === 0) simState.angleDeg = -15;
+
+      document.getElementById('angleSlider').value = simState.angleDeg;
+      document.getElementById('angleValueDisplay').textContent = `${simState.angleDeg > 0 ? '+' : ''}${simState.angleDeg}°`;
+
+      // Automatically advance to next trial row (1 -> 2 -> 3 -> 1) if previous run progressed
+      if (simState.distanceTraveled >= 20) {
+        const nextTrial = (simState.activeTrialIndex + 1) % 3;
+        selectActiveTrial(nextTrial);
+      }
+
+      simState.elapsedTime = 0;
+      simState.distanceTraveled = 0;
+      simState.capturedCheckpoints = [false, false, false, false, false];
+      simState.bubbleStartEnd = simState.angleDeg < 0 ? 'right' : 'left';
+
+      updateStartPauseButtonUI();
+      updateLcdDisplay(0, 0, 0);
+      resetSensorBadgesUI();
+      updateTheoreticalVelocityDisplay();
+      updateTubeTransformAndBubble();
+
+      setStatusMessage(
+        `Tubo volteado a ${simState.angleDeg}°. Listo para registrar el Tiempo ${simState.activeTrialIndex + 1}.`,
+        'neutral'
+      );
+    }
+
+    function selectActiveTrial(trialIdx) {
+      simState.activeTrialIndex = trialIdx;
+      document.getElementById('trialBadge').textContent = `Ensayo ${trialIdx + 1}`;
+      document.getElementById('activeTrialLabelInline').textContent = `Tiempo ${trialIdx + 1}`;
+
+      for (let i = 0; i < 3; i++) {
+        const btn = document.getElementById(`trialBtn${i}`);
+        if (i === trialIdx) {
+          btn.className = 'py-1.5 text-xs font-bold rounded-lg transition bg-[#2d6258] dark:bg-emerald-600 text-white shadow-sm';
+        } else {
+          btn.className = 'py-1.5 text-xs font-bold rounded-lg transition text-[#495a52] dark:text-slate-300 hover:bg-white/60 dark:hover:bg-slate-700';
+        }
+      }
+
+      // Update sensor badges to show currently recorded values for this trial
+      DISTANCES.forEach((d, idx) => {
+        const val = table1Data[trialIdx][idx];
+        const badge = document.getElementById(`sensorBadge${d}`);
+        if (val !== null && !isNaN(val) && val > 0) {
+          badge.innerHTML = `${d}cm: <strong class="text-emerald-600 dark:text-emerald-400">${val.toFixed(2)}s</strong>`;
+        } else {
+          badge.innerHTML = `${d}cm: <strong class="text-gray-800 dark:text-slate-200">--</strong>`;
+        }
+      });
+    }
+
+    function resetSensorBadgesUI() {
+      DISTANCES.forEach((d) => {
+        const badge = document.getElementById(`sensorBadge${d}`);
+        badge.className = 'px-2.5 py-1 rounded-lg text-xs font-mono-lcd bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 text-gray-500 dark:text-slate-400 transition';
+        badge.innerHTML = `${d}cm: <strong class="text-gray-800 dark:text-slate-200">--</strong>`;
+        const dot = document.getElementById(`svgSensorDot_${d}`);
+        if (dot) dot.setAttribute('fill', '#f59e0b');
+      });
+    }
+
+    function resetSensorBadgesUI() {
+      DISTANCES.forEach((d) => {
+        const badge = document.getElementById(`sensorBadge${d}`);
+        badge.className = 'px-2.5 py-1 rounded-lg text-xs font-mono-lcd bg-white border border-gray-200 text-gray-500 transition';
+        badge.innerHTML = `${d}cm: <strong class="text-gray-800">--</strong>`;
+        const dot = document.getElementById(`svgSensorDot_${d}`);
+        if (dot) dot.setAttribute('fill', '#9e6b30');
+      });
+    }
+
+    function updateStartPauseButtonUI() {
+      const icon = document.getElementById('btnStartPauseIcon');
+      const text = document.getElementById('btnStartPauseText');
+      if (simState.isRunning) {
+        icon.textContent = '⏸';
+        text.textContent = 'Pausar';
+      } else if (simState.elapsedTime > 0 && simState.distanceTraveled < 100) {
+        icon.textContent = '▶';
+        text.textContent = 'Continuar';
+      } else {
+        icon.textContent = '▶';
+        text.textContent = 'Iniciar';
+      }
+    }
+
+    function updateLcdDisplay(timeSec, distCm, velCmPerSec) {
+      document.getElementById('lcdTime').textContent = timeSec.toFixed(2);
+      document.getElementById('lcdDistance').textContent = distCm.toFixed(1);
+      document.getElementById('lcdVelocity').textContent = velCmPerSec.toFixed(3);
+    }
+
+    function setStatusMessage(msg, type) {
+      const box = document.getElementById('statusBox');
+      box.textContent = msg;
+      if (type === 'warn') {
+        box.className = 'border-l-4 border-amber-500 bg-amber-500/10 rounded-r-xl p-3.5 text-xs text-amber-800 dark:text-amber-300 leading-relaxed';
+      } else if (type === 'active') {
+        box.className = 'border-l-4 border-emerald-500 bg-emerald-500/10 rounded-r-xl p-3.5 text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed font-medium';
+      } else {
+        box.className = 'border-l-4 border-[#2d6258] dark:border-emerald-500 bg-[#eff3f0] dark:bg-slate-800/80 rounded-r-xl p-3.5 text-xs text-[#42544b] dark:text-slate-300 leading-relaxed';
+      }
+    }
+
+    /**
+     * Main RequestAnimationFrame loop for smooth bubble motion and checkpoint capture
+     */
+    function simulationLoop(timestamp) {
+      if (simState.isRunning) {
+        if (!simState.lastFrameTimestamp) {
+          simState.lastFrameTimestamp = timestamp;
+        }
+        const dt = (timestamp - simState.lastFrameTimestamp) / 1000;
+        simState.lastFrameTimestamp = timestamp;
+
+        const v = getTheoreticalVelocity();
+        if (v <= 0.001) {
+          simState.isRunning = false;
+          updateStartPauseButtonUI();
+        } else {
+          simState.elapsedTime += dt;
+          simState.distanceTraveled = simState.elapsedTime * v;
+
+          // Check each checkpoint (20, 40, 60, 80, 100 cm)
+          DISTANCES.forEach((checkpointCm, idx) => {
+            if (!simState.capturedCheckpoints[idx] && simState.distanceTraveled >= checkpointCm) {
+              simState.capturedCheckpoints[idx] = true;
+              const exactTime = checkpointCm / v;
+              const recordedTime = Math.max(0.05, exactTime + simState.trialJitterFactors[idx]);
+              const roundedTime = Math.round(recordedTime * 100) / 100;
+
+              // Save to Table I
+              table1Data[simState.activeTrialIndex][idx] = roundedTime;
+              const inputEl = document.getElementById(`t_${simState.activeTrialIndex}_${idx}`);
+              if (inputEl) inputEl.value = roundedTime.toFixed(2);
+
+              // Highlight sensor badge & SVG sensor dot
+              const badge = document.getElementById(`sensorBadge${checkpointCm}`);
+              badge.className = 'px-2.5 py-1 rounded-lg text-xs font-mono-lcd bg-[#e6f5ed] border border-[#6ec995] text-[#175935] transition transform scale-105';
+              badge.innerHTML = `${checkpointCm}cm: <strong>${roundedTime.toFixed(2)}s</strong>`;
+
+              const dot = document.getElementById(`svgSensorDot_${checkpointCm}`);
+              if (dot) dot.setAttribute('fill', '#10b981');
+
+              recalculateTable2AndVp();
+              drawCartesianGraph(false);
+            }
+          });
+
+          // Stop at 100 cm end of tube
+          if (simState.distanceTraveled >= 100) {
+            simState.distanceTraveled = 100;
+            simState.elapsedTime = 100 / v;
+            simState.isRunning = false;
+            updateStartPauseButtonUI();
+            setStatusMessage(
+              `¡Recorrido de 100 cm completado! Tiempos guardados en la fila ${simState.activeTrialIndex + 1} de la Tabla I. Presioná «Voltear tubo» para el siguiente ensayo.`,
+              'active'
+            );
+          }
+
+          const currentMeanVel = simState.elapsedTime > 0 ? (simState.distanceTraveled / simState.elapsedTime) : 0;
+          updateLcdDisplay(simState.elapsedTime, simState.distanceTraveled, currentMeanVel);
+          updateTubeTransformAndBubble();
+        }
+      }
+      requestAnimationFrame(simulationLoop);
+    }
+
+    /**
+     * Instantly populates all 3 trials in Table I using current angle & liquid
+     */
+    function simulateThreeTrialsInstantly() {
+      if (simState.angleDeg === 0) {
+        setStatusMessage('Incliná el tubo a un ángulo distinto de 0° para simular los 3 ensayos.', 'warn');
+        return;
+      }
+      const v = getTheoreticalVelocity();
+      const useJitter = document.getElementById('humanJitterCheckbox').checked;
+
+      for (let t = 0; t < 3; t++) {
+        for (let idx = 0; idx < DISTANCES.length; idx++) {
+          const exactT = DISTANCES[idx] / v;
+          const jitter = useJitter ? (Math.random() - 0.5) * 0.09 : 0;
+          const val = Math.max(0.05, Math.round((exactT + jitter) * 100) / 100);
+          table1Data[t][idx] = val;
+        }
+      }
+
+      populateTable1InputsFromState();
+      recalculateTable2AndVp();
+      selectActiveTrial(simState.activeTrialIndex);
+      drawCartesianGraph(true);
+
+      setStatusMessage(
+        `¡3 ensayos generados con ${SUBSTANCES[simState.substanceKey].name} a ${simState.angleDeg}°! Revisá la Tabla I, Tabla II y la Gráfica.`,
+        'active'
+      );
+    }
+
+    /*************************************************************************
+     * 4. TABLE I & TABLE II CALCULATIONS
+     *************************************************************************/
+    function populateTable1InputsFromState() {
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 5; c++) {
+          const input = document.getElementById(`t_${r}_${c}`);
+          const val = table1Data[r][c];
+          input.value = (val !== null && !isNaN(val)) ? val.toFixed(2) : '';
+        }
+      }
+    }
+
+    function onTableCellInput(row, col, rawVal) {
+      const parsed = parseFloat(rawVal);
+      table1Data[row][col] = (!isNaN(parsed) && parsed > 0) ? parsed : null;
+      recalculateTable2AndVp();
+      drawCartesianGraph(false);
+    }
+
+    function getComputedTable2Metrics() {
+      const avgTimes = [];
+      const meanVelocities = [];
+
+      for (let c = 0; c < 5; c++) {
+        const validTrials = [];
+        for (let r = 0; r < 3; r++) {
+          const v = table1Data[r][c];
+          if (v !== null && !isNaN(v) && v > 0) {
+            validTrials.push(v);
+          }
+        }
+
+        if (validTrials.length > 0) {
+          const rawMeanT = validTrials.reduce((a, b) => a + b, 0) / validTrials.length;
+          // Truncate/round to 2 decimals like in Image 3 (e.g. (1.00+1.12+1.14)/3 = 1.0866 -> 1.08 or rounded)
+          const roundedT = Math.round(rawMeanT * 100) / 100;
+          avgTimes.push(roundedT);
+
+          // Velocity = distance / avgTime
+          const vel = DISTANCES[c] / roundedT;
+          const roundedVel = Math.round(vel * 100) / 100;
+          meanVelocities.push(roundedVel);
+        } else {
+          avgTimes.push(null);
+          meanVelocities.push(null);
+        }
+      }
+
+      const validVels = meanVelocities.filter((v) => v !== null && !isNaN(v));
+      const vp = validVels.length > 0
+        ? validVels.reduce((a, b) => a + b, 0) / validVels.length
+        : 0;
+
+      return { avgTimes, meanVelocities, vp };
+    }
+
+    function recalculateTable2AndVp() {
+      const { avgTimes, meanVelocities, vp } = getComputedTable2Metrics();
+
+      for (let c = 0; c < 5; c++) {
+        const avgEl = document.getElementById(`avg_t_${c}`);
+        const velEl = document.getElementById(`vel_m_${c}`);
+
+        avgEl.textContent = avgTimes[c] !== null ? avgTimes[c].toFixed(2).replace('.', ',') : '--';
+        velEl.textContent = meanVelocities[c] !== null ? meanVelocities[c].toFixed(2).replace('.', ',') : '--';
+      }
+
+      const vpDisplay = document.getElementById('finalVpDisplay');
+      const breakdownEl = document.getElementById('vpFormulaBreakdown');
+
+      if ( vp > 0 ) {
+        vpDisplay.textContent = vp.toFixed(2);
+        const terms = meanVelocities
+          .filter((v) => v !== null)
+          .map((v) => v.toFixed(2))
+          .join(' + ');
+        const count = meanVelocities.filter((v) => v !== null).length;
+        breakdownEl.textContent = `Vp = (${terms}) / ${count} = ${vp.toFixed(2)} cm/s`;
+      } else {
+        vpDisplay.textContent = '--';
+        breakdownEl.textContent = 'Ingresá o simulá tiempos en la Tabla I para calcular Vp.';
+      }
+
+      // Update analytical cards below graph
+      document.getElementById('graphEquationText').textContent = vp > 0 ? `d(t) = ${vp.toFixed(2)} · t` : 'd(t) = --';
+      document.getElementById('graphTotalTimeText').textContent = avgTimes[4] !== null ? `t̄₁₀₀ = ${avgTimes[4].toFixed(2)} s` : 't̄₁₀₀ = --';
+    }
+
+    function loadImageExampleData() {
+      // Set exact values from Image 2 & Image 3
+      table1Data = IMAGE_EXAMPLE_TRIALS.map((row) => [...row]);
+      simState.angleDeg = -15;
+      simState.substanceKey = 'agua';
+      document.getElementById('angleSlider').value = -15;
+      document.getElementById('angleValueDisplay').textContent = '-15°';
+      document.getElementById('substanceSelect').value = 'agua';
+
+      updateSubstanceVisuals();
+      updateTheoreticalVelocityDisplay();
+      updateTubeTransformAndBubble();
+      populateTable1InputsFromState();
+
+      // Match the exact truncated display of Tabla II in Image 3 when exact example is loaded
+      const exactAvgTimes = [1.08, 2.14, 3.26, 4.28, 5.39];
+      const exactVelocities = [18.51, 18.69, 18.40, 18.69, 18.55];
+      for (let c = 0; c < 5; c++) {
+        document.getElementById(`avg_t_${c}`).textContent = exactAvgTimes[c].toFixed(2).replace('.', ',');
+        document.getElementById(`vel_m_${c}`).textContent = exactVelocities[c].toFixed(2).replace('.', ',');
+      }
+      document.getElementById('finalVpDisplay').textContent = '18.57';
+      document.getElementById('vpFormulaBreakdown').textContent =
+        'Vp = (18.51 + 18.69 + 18.40 + 18.69 + 18.55) / 5 = 18.57 cm/s';
+      document.getElementById('graphEquationText').textContent = 'd(t) = 18.57 · t';
+      document.getElementById('graphTotalTimeText').textContent = 't̄₁₀₀ = 5.39 s';
+
+      selectActiveTrial(0);
+      drawCartesianGraph(true);
+      setStatusMessage('Datos exactos de las imágenes (Tabla I y Tabla II) cargados correctamente.', 'active');
+    }
+
+    function clearTablesData() {
+      table1Data = [
+        [null, null, null, null, null],
+        [null, null, null, null, null],
+        [null, null, null, null, null]
+      ];
+      populateTable1InputsFromState();
+      recalculateTable2AndVp();
+      resetSensorBadgesUI();
+      drawCartesianGraph(false);
+      setStatusMessage('Tablas vaciadas. Iniciá el simulador o escribí tus propios tiempos en la Tabla I.', 'neutral');
+    }
+
+    /*************************************************************************
+     * 5. INTERACTIVE CARTESIAN PLANE ENGINE
+     *************************************************************************/
+    function scrollToSection(id) {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function generateAndScrollToGraph() {
+      scrollToSection('seccionGrafica');
+      drawCartesianGraph(true);
+    }
+
+    function setGraphMode(mode) {
+      graphMode = mode;
+      const tabs = {
+        d_vs_t: document.getElementById('tabGraphDT'),
+        t_vs_d: document.getElementById('tabGraphTD'),
+        v_vs_d: document.getElementById('tabGraphVD')
+      };
+      Object.keys(tabs).forEach((k) => {
+        if (k === mode) {
+          tabs[k].className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 shadow-md';
+        } else {
+          tabs[k].className = 'px-3.5 py-1.5 rounded-lg text-xs font-bold transition text-slate-400 hover:text-white';
+        }
+      });
+      drawCartesianGraph(true);
+    }
+
+    function handleCanvasPointerMove(e) {
+      const canvas = document.getElementById('cartesianCanvas');
+      const rect = canvas.getBoundingClientRect();
+      hoverMousePos = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+      drawCartesianGraph(false);
+    }
+
+    function handleCanvasTouch(e) {
+      if (e.touches.length > 0) {
+        const canvas = document.getElementById('cartesianCanvas');
+        const rect = canvas.getBoundingClientRect();
+        hoverMousePos = {
+          x: e.touches[0].clientX - rect.left,
+          y: e.touches[0].clientY - rect.top
+        };
+        drawCartesianGraph(false);
+      }
+    }
+
+    function drawCartesianGraph(animate = false) {
+      if (animate) {
+        if (graphAnimFrame) cancelAnimationFrame(graphAnimFrame);
+        graphAnimProgress = 0;
+        const start = performance.now();
+        const duration = 650;
+
+        function step(now) {
+          graphAnimProgress = Math.min(1, (now - start) / duration);
+          // Ease out cubic
+          const eased = 1 - Math.pow(1 - graphAnimProgress, 3);
+          renderCartesianCanvas(eased);
+          if (graphAnimProgress < 1) {
+            graphAnimFrame = requestAnimationFrame(step);
+          }
+        }
+        graphAnimFrame = requestAnimationFrame(step);
+      } else {
+        renderCartesianCanvas(1);
+      }
+    }
+
+    function renderCartesianCanvas(animFactor = 1) {
+      const canvas = document.getElementById('cartesianCanvas');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+
+      const dpr = window.devicePixelRatio || 1;
+      const rect = canvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+
+      if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+        canvas.width = Math.round(width * dpr);
+        canvas.height = Math.round(height * dpr);
+      }
+      ctx.save();
+      ctx.scale(dpr, dpr);
+
+      // Futuristic Cyber Telemetry Background
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+      bgGrad.addColorStop(0, '#040b09');
+      bgGrad.addColorStop(1, '#071410');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // Margins for Cartesian Plane axes & labels
+      const pad = { top: 46, right: 50, bottom: 64, left: 76 };
+      const plotW = Math.max(100, width - pad.left - pad.right);
+      const plotH = Math.max(100, height - pad.top - pad.bottom);
+
+      // Gather data from Table I and Table II
+      const { avgTimes, meanVelocities, vp } = getComputedTable2Metrics();
+
+      // Determine X and Y points depending on graphMode
+      let avgPoints = [];
+      let trialPoints = [];
+      let xLabel = '';
+      let yLabel = '';
+      let xUnit = '';
+      let yUnit = '';
+
+      if (graphMode === 'd_vs_t') {
+        xLabel = 'EJE X • TIEMPO (s)';
+        yLabel = 'EJE Y • DISTANCIA (cm)';
+        xUnit = 's';
+        yUnit = 'cm';
+
+        avgPoints.push({ x: 0, y: 0, label: 'Origen (0, 0)' });
+        for (let c = 0; c < 5; c++) {
+          if (avgTimes[c] !== null) {
+            avgPoints.push({
+              x: avgTimes[c],
+              y: DISTANCES[c],
+              vel: meanVelocities[c],
+              label: `NODO ${c + 1} (${avgTimes[c].toFixed(2)} s, ${DISTANCES[c]} cm)`
+            });
+          }
+          for (let r = 0; r < 3; r++) {
+            const tVal = table1Data[r][c];
+            if (tVal !== null && !isNaN(tVal) && tVal > 0) {
+              trialPoints.push({ x: tVal, y: DISTANCES[c], trial: r + 1 });
+            }
+          }
+        }
+      } else if (graphMode === 't_vs_d') {
+        xLabel = 'EJE X • DISTANCIA (cm)';
+        yLabel = 'EJE Y • TIEMPO (s)';
+        xUnit = 'cm';
+        yUnit = 's';
+
+        avgPoints.push({ x: 0, y: 0, label: 'Origen (0, 0)' });
+        for (let c = 0; c < 5; c++) {
+          if (avgTimes[c] !== null) {
+            avgPoints.push({
+              x: DISTANCES[c],
+              y: avgTimes[c],
+              vel: meanVelocities[c],
+              label: `NODO ${c + 1} (${DISTANCES[c]} cm, ${avgTimes[c].toFixed(2)} s)`
+            });
+          }
+          for (let r = 0; r < 3; r++) {
+            const tVal = table1Data[r][c];
+            if (tVal !== null && !isNaN(tVal) && tVal > 0) {
+              trialPoints.push({ x: DISTANCES[c], y: tVal, trial: r + 1 });
+            }
+          }
+        }
+      } else {
+        xLabel = 'EJE X • DISTANCIA (cm)';
+        yLabel = 'EJE Y • VELOCIDAD MEDIA (cm/s)';
+        xUnit = 'cm';
+        yUnit = 'cm/s';
+
+        for (let c = 0; c < 5; c++) {
+          if (meanVelocities[c] !== null) {
+            avgPoints.push({
+              x: DISTANCES[c],
+              y: meanVelocities[c],
+              vel: meanVelocities[c],
+              label: `V${c + 1} (${DISTANCES[c]} cm, ${meanVelocities[c].toFixed(2)} cm/s)`
+            });
+          }
+          for (let r = 0; r < 3; r++) {
+            const tVal = table1Data[r][c];
+            if (tVal !== null && !isNaN(tVal) && tVal > 0) {
+              trialPoints.push({ x: DISTANCES[c], y: DISTANCES[c] / tVal, trial: r + 1 });
+            }
+          }
+        }
+      }
+
+      // Compute axis bounds
+      const allX = [...avgPoints.map((p) => p.x), ...trialPoints.map((p) => p.x), 1];
+      const allY = [...avgPoints.map((p) => p.y), ...trialPoints.map((p) => p.y), 1];
+
+      let maxX = Math.max(...allX) * 1.12;
+      let maxY = Math.max(...allY) * 1.12;
+
+      if (graphMode === 'd_vs_t') {
+        maxY = 110;
+        maxX = Math.max(6.0, Math.ceil(Math.max(...allX) * 1.15));
+      } else if (graphMode === 't_vs_d') {
+        maxX = 110;
+        maxY = Math.max(6.0, Math.ceil(Math.max(...allY) * 1.15));
+      } else {
+        maxX = 110;
+        maxY = Math.max(25, Math.ceil(Math.max(...allY) * 1.25));
+      }
+
+      const toScreenX = (valX) => pad.left + (valX / maxX) * plotW;
+      const toScreenY = (valY) => pad.top + plotH - (valY / maxY) * plotH;
+      const toDataX = (px) => ((px - pad.left) / plotW) * maxX;
+      const toDataY = (py) => ((pad.top + plotH - py) / plotH) * maxY;
+
+      // 1. Draw Futuristic Cyber Grid
+      const xStep = graphMode === 'd_vs_t' ? (maxX <= 8 ? 0.5 : 1) : 10;
+      const yStep = graphMode === 'd_vs_t' ? 10 : (graphMode === 't_vs_d' ? (maxY <= 8 ? 0.5 : 1) : 2);
+
+      // Sub-grid lines
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(16, 185, 129, 0.05)';
+      for (let x = 0; x <= maxX + 0.001; x += xStep / 2) {
+        const sx = toScreenX(x);
+        ctx.beginPath();
+        ctx.moveTo(sx, pad.top);
+        ctx.lineTo(sx, pad.top + plotH);
+        ctx.stroke();
+      }
+      for (let y = 0; y <= maxY + 0.001; y += yStep / 2) {
+        const sy = toScreenY(y);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, sy);
+        ctx.lineTo(pad.left + plotW, sy);
+        ctx.stroke();
+      }
+
+      // Major cyber grid lines & tick labels
+      ctx.strokeStyle = 'rgba(6, 182, 212, 0.14)';
+      ctx.fillStyle = '#6ee7b7';
+      ctx.font = '600 11px "JetBrains Mono", monospace';
+      ctx.textAlign = 'center';
+
+      for (let x = 0; x <= maxX + 0.001; x += xStep) {
+        const sx = toScreenX(x);
+        ctx.beginPath();
+        ctx.moveTo(sx, pad.top);
+        ctx.lineTo(sx, pad.top + plotH);
+        ctx.stroke();
+
+        // Tick mark
+        ctx.strokeStyle = '#22d3ee';
+        ctx.beginPath();
+        ctx.moveTo(sx, pad.top + plotH);
+        ctx.lineTo(sx, pad.top + plotH + 6);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.14)';
+
+        const labelText = Number.isInteger(x) ? x.toString() : x.toFixed(1);
+        ctx.fillText(labelText, sx, pad.top + plotH + 20);
+      }
+
+      ctx.textAlign = 'right';
+      for (let y = 0; y <= maxY + 0.001; y += yStep) {
+        const sy = toScreenY(y);
+        ctx.beginPath();
+        ctx.moveTo(pad.left, sy);
+        ctx.lineTo(pad.left + plotW, sy);
+        ctx.stroke();
+
+        // Tick mark
+        ctx.strokeStyle = '#22d3ee';
+        ctx.beginPath();
+        ctx.moveTo(pad.left - 6, sy);
+        ctx.lineTo(pad.left, sy);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(6, 182, 212, 0.14)';
+
+        const labelText = Number.isInteger(y) ? y.toString() : y.toFixed(1);
+        ctx.fillText(labelText, pad.left - 10, sy + 4);
+      }
+
+      // 2. Draw Glowing Neon Cartesian Axes (X and Y with arrowheads)
+      ctx.save();
+      ctx.strokeStyle = '#10b981';
+      ctx.shadowColor = '#10b981';
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = 2.2;
+      ctx.beginPath();
+      // Y axis
+      ctx.moveTo(pad.left, pad.top + plotH);
+      ctx.lineTo(pad.left, pad.top - 14);
+      // X axis
+      ctx.moveTo(pad.left, pad.top + plotH);
+      ctx.lineTo(pad.left + plotW + 14, pad.top + plotH);
+      ctx.stroke();
+
+      // Arrowheads
+      ctx.fillStyle = '#10b981';
+      ctx.beginPath();
+      ctx.moveTo(pad.left, pad.top - 18);
+      ctx.lineTo(pad.left - 5, pad.top - 7);
+      ctx.lineTo(pad.left + 5, pad.top - 7);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.moveTo(pad.left + plotW + 18, pad.top + plotH);
+      ctx.lineTo(pad.left + plotW + 7, pad.top + plotH - 5);
+      ctx.lineTo(pad.left + plotW + 7, pad.top + plotH + 5);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+
+      // Axis Titles
+      ctx.font = '700 12px "JetBrains Mono", monospace';
+      ctx.fillStyle = '#a7f3d0';
+      ctx.textAlign = 'center';
+      ctx.fillText(xLabel, pad.left + plotW / 2, height - 14);
+
+      ctx.save();
+      ctx.translate(22, pad.top + plotH / 2);
+      ctx.rotate(-Math.PI / 2);
+      ctx.fillText(yLabel, 0, 0);
+      ctx.restore();
+
+      // Calculate R^2 for linear regression
+      computeAndDisplayR2(avgPoints);
+
+      const showTrials = document.getElementById('chkShowTrials').checked;
+      const showAvg = document.getElementById('chkShowAvgPoints').checked;
+      const showTrend = document.getElementById('chkShowTrendline').checked;
+      const showSlope = document.getElementById('chkShowSlopeTriangle').checked;
+
+      // 3. Draw Holographic Area Under Curve & Laser Trendline (MRU Best Fit)
+      if (showTrend && avgPoints.length >= 2 && vp > 0) {
+        ctx.save();
+
+        let xEnd, yEnd;
+        if (graphMode === 'd_vs_t') {
+          xEnd = Math.min(maxX, 105 / vp) * animFactor;
+          yEnd = vp * xEnd;
+        } else if (graphMode === 't_vs_d') {
+          xEnd = 105 * animFactor;
+          yEnd = xEnd / vp;
+        } else {
+          xEnd = 105 * animFactor;
+          yEnd = vp;
+        }
+
+        // Translucent Cyber Area Fill under Line
+        const areaGrad = ctx.createLinearGradient(0, pad.top, 0, pad.top + plotH);
+        areaGrad.addColorStop(0, 'rgba(16, 185, 129, 0.24)');
+        areaGrad.addColorStop(1, 'rgba(6, 182, 212, 0.01)');
+        ctx.fillStyle = areaGrad;
+
+        ctx.beginPath();
+        if (graphMode === 'v_vs_d') {
+          ctx.moveTo(toScreenX(0), toScreenY(0));
+          ctx.lineTo(toScreenX(0), toScreenY(vp));
+          ctx.lineTo(toScreenX(xEnd), toScreenY(vp));
+          ctx.lineTo(toScreenX(xEnd), toScreenY(0));
+        } else {
+          ctx.moveTo(toScreenX(0), toScreenY(0));
+          ctx.lineTo(toScreenX(xEnd), toScreenY(yEnd));
+          ctx.lineTo(toScreenX(xEnd), toScreenY(0));
+        }
+        ctx.closePath();
+        ctx.fill();
+
+        // Glowing Laser Beam Line
+        ctx.strokeStyle = '#34d399';
+        ctx.shadowColor = '#10b981';
+        ctx.shadowBlur = 14;
+        ctx.lineWidth = 3;
+
+        if (graphMode === 'v_vs_d') {
+          ctx.setLineDash([8, 5]);
+          ctx.beginPath();
+          ctx.moveTo(toScreenX(0), toScreenY(vp));
+          ctx.lineTo(toScreenX(xEnd), toScreenY(vp));
+          ctx.stroke();
+          ctx.setLineDash([]);
+        } else {
+          ctx.beginPath();
+          ctx.moveTo(toScreenX(0), toScreenY(0));
+          ctx.lineTo(toScreenX(xEnd), toScreenY(yEnd));
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      // 4. Draw Holographic Slope Triangle (Δy / Δx) between 40 cm and 80 cm
+      if (showSlope && animFactor > 0.8 && avgPoints.length >= 5 && graphMode === 'd_vs_t' && vp > 0) {
+        const t1 = 40 / vp;
+        const t2 = 80 / vp;
+        const sx1 = toScreenX(t1);
+        const sy1 = toScreenY(40);
+        const sx2 = toScreenX(t2);
+        const sy2 = toScreenY(80);
+
+        ctx.save();
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.12)';
+        ctx.strokeStyle = '#fbbf24';
+        ctx.lineWidth = 1.8;
+        ctx.setLineDash([5, 4]);
+
+        ctx.beginPath();
+        ctx.moveTo(sx1, sy1);
+        ctx.lineTo(sx2, sy1);
+        ctx.lineTo(sx2, sy2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        ctx.fillStyle = '#fde68a';
+        ctx.font = '700 11px "JetBrains Mono", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(`Δt = ${(t2 - t1).toFixed(2)} s`, (sx1 + sx2) / 2, sy1 + 17);
+        ctx.textAlign = 'left';
+        ctx.fillText('Δd = 40 cm', sx2 + 8, (sy1 + sy2) / 2 + 4);
+        ctx.restore();
+      }
+
+      // 5. Draw Individual Trial Points (Table I)
+      if (showTrials) {
+        const trialColors = ['#fbbf24', '#a78bfa', '#f472b6'];
+        trialPoints.forEach((tp) => {
+          const sx = toScreenX(tp.x * animFactor);
+          const sy = toScreenY(tp.y * animFactor);
+          ctx.save();
+          ctx.fillStyle = trialColors[(tp.trial - 1) % 3];
+          ctx.shadowColor = trialColors[(tp.trial - 1) % 3];
+          ctx.shadowBlur = 6;
+          ctx.globalAlpha = 0.85;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        });
+      }
+
+      // 6. Draw Futuristic Target Nodes for Average Points (Table II)
+      let hoveredPoint = null;
+      if (showAvg) {
+        avgPoints.forEach((pt, idx) => {
+          const sx = toScreenX(pt.x * animFactor);
+          const sy = toScreenY(pt.y * animFactor);
+
+          // Laser projection lines to X and Y axes
+          if (pt.x > 0 && pt.y > 0 && animFactor > 0.9) {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 4]);
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(sx, pad.top + plotH);
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(pad.left, sy);
+            ctx.stroke();
+            ctx.restore();
+          }
+
+          // Check hover proximity
+          if (hoverMousePos) {
+            const distPx = Math.hypot(hoverMousePos.x - sx, hoverMousePos.y - sy);
+            if (distPx < 20) {
+              hoveredPoint = { ...pt, sx, sy, idx };
+            }
+          }
+
+          // Outer glowing target ring
+          ctx.save();
+          ctx.strokeStyle = '#22d3ee';
+          ctx.shadowColor = '#22d3ee';
+          ctx.shadowBlur = 12;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(sx, sy, 7.5, 0, Math.PI * 2);
+          ctx.stroke();
+
+          // Inner bright core
+          ctx.fillStyle = '#ecfeff';
+          ctx.beginPath();
+          ctx.arc(sx, sy, 3.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // HUD Coordinate Pill next to each average point
+          if (pt.x > 0 && animFactor > 0.95) {
+            const coordStr = `(${pt.x.toFixed(2)}; ${Number.isInteger(pt.y) ? pt.y : pt.y.toFixed(2)})`;
+            ctx.font = '600 10.5px "JetBrains Mono", monospace';
+            const textW = ctx.measureText(coordStr).width + 10;
+            ctx.fillStyle = 'rgba(6, 24, 20, 0.85)';
+            ctx.strokeStyle = 'rgba(34, 211, 238, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.roundRect(sx + 10, sy - 20, textW, 18, 4);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = '#67e8f9';
+            ctx.textAlign = 'left';
+            ctx.fillText(coordStr, sx + 15, sy - 7);
+          }
+          ctx.restore();
+        });
+      }
+
+      // 7. Interactive Laser Scanner Crosshair & Futuristic HUD Tooltip
+      if (hoverMousePos &&
+          hoverMousePos.x >= pad.left && hoverMousePos.x <= pad.left + plotW &&
+          hoverMousePos.y >= pad.top && hoverMousePos.y <= pad.top + plotH) {
+
+        const dataX = Math.max(0, toDataX(hoverMousePos.x));
+        const dataY = Math.max(0, toDataY(hoverMousePos.y));
+
+        document.getElementById('cursorCoordsBadge').textContent =
+          `ESCÁNER: [X: ${dataX.toFixed(2)} ${xUnit} , Y: ${dataY.toFixed(2)} ${yUnit}]`;
+
+        ctx.save();
+        ctx.strokeStyle = 'rgba(52, 211, 153, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(hoverMousePos.x, pad.top);
+        ctx.lineTo(hoverMousePos.x, pad.top + plotH);
+        ctx.moveTo(pad.left, hoverMousePos.y);
+        ctx.lineTo(pad.left + plotW, hoverMousePos.y);
+        ctx.stroke();
+        ctx.restore();
+
+        if (hoveredPoint) {
+          // Radar target pulse on hovered point
+          ctx.save();
+          ctx.strokeStyle = '#5ce68b';
+          ctx.fillStyle = 'rgba(92, 230, 139, 0.18)';
+          ctx.shadowColor = '#5ce68b';
+          ctx.shadowBlur = 15;
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(hoveredPoint.sx, hoveredPoint.sy, 14, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+
+          const boxW = 225;
+          const boxH = hoveredPoint.vel ? 62 : 42;
+          let bx = hoveredPoint.sx + 16;
+          let by = hoveredPoint.sy - boxH - 12;
+          if (bx + boxW > width - 14) bx = hoveredPoint.sx - boxW - 16;
+          if (by < 14) by = hoveredPoint.sy + 16;
+
+          ctx.fillStyle = 'rgba(4, 15, 12, 0.95)';
+          ctx.strokeStyle = '#22d3ee';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.roundRect(bx, by, boxW, boxH, 10);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#5ce68b';
+          ctx.font = '700 11.5px "JetBrains Mono", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(hoveredPoint.label, bx + 12, by + 23);
+
+          if (hoveredPoint.vel) {
+            ctx.fillStyle = '#67e8f9';
+            ctx.font = '600 11px "JetBrains Mono", monospace';
+            ctx.fillText(`⚡ v media = ${hoveredPoint.vel.toFixed(2)} cm/s`, bx + 12, by + 44);
+          }
+          ctx.restore();
+        }
+      }
+
+      ctx.restore();
+    }
+
+    function computeAndDisplayR2(points) {
+      const r2El = document.getElementById('graphR2Text');
+      if (!points || points.length < 3) {
+        r2El.textContent = 'R² = --';
+        return;
+      }
+      const n = points.length;
+      let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+      points.forEach((p) => {
+        sumX += p.x;
+        sumY += p.y;
+        sumXY += p.x * p.y;
+        sumX2 += p.x * p.x;
+        sumY2 += p.y * p.y;
+      });
+      const num = n * sumXY - sumX * sumY;
+      const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+      const r2 = den === 0 ? 1 : Math.pow(num / den, 2);
+      r2El.textContent = `R² = ${r2.toFixed(4)}`;
+    }
+
+    function downloadGraphPNG() {
+      const canvas = document.getElementById('cartesianCanvas');
+      const link = document.createElement('a');
+      link.download = `grafica_tubo_mikola_${graphMode}.png`;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+  </script>
+</body>
+</html>
